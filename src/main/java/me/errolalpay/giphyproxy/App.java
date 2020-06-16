@@ -1,4 +1,4 @@
-package me.errolalpay.app;
+package me.errolalpay.giphyproxy;
 
 public class App {
 
