@@ -14,6 +14,27 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Proxies inbound TCP requests to an another TCP service.
+ * 
+ * Principal of operation: This proxy server listens for inbound connections like typical TCP servers do. Once an
+ * inbound connection is accepted, the proxy then opens a companion connection, outbound to the outbound service. The 2
+ * connections are then indexed together, forwards and backwards, in a HashMap such that the companion connection can be
+ * found with predictable performance. Whenever data is read from one connection, the companion connection is retrieved,
+ * and that same data is then written to the companion. This "read from connection, write to companion" works in both
+ * directions, regardless of which connection (inbound or outbound) sent the data. This read/write back and forth TCP
+ * conversation continues until either connection closes itself. At that time, the proxy server assumes the conversation
+ * is over, and destroys both connections as well as their membership in the index.
+ * 
+ * This proxy has an emphasis on privacy, therefore it doesnt log ip addresses, number of bytes written, date/time, etc.
+ * It limits logging to only that which helps us see the service is running properly.
+ * 
+ * The content of the TCP byte streams are not consumed in any way, therefore is it the client connections'
+ * responsibility to know the service they are consuming, and to handle all params, auth, SSL, keep-alives etc.
+ * 
+ * @author Errol Alpay
+ *
+ */
 public class ProxyingTcpServer extends Thread {
 
 	private Selector m_selector = null;
