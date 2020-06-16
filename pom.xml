@@ -5,10 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>me.errolalpay.app</groupId>
-  <artifactId>my-app</artifactId>
+  <artifactId>giphyproxy</artifactId>
   <version>1.0-SNAPSHOT</version>
 
-  <name>my-app</name>
+  <name>giphyproxy</name>
   <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
 
