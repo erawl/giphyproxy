@@ -182,7 +182,7 @@ public class ProxyingTcpServer extends Thread {
 									throw new EOFException( "Closed connection" );
 								}
 
-								( (Buffer) m_readWriteBuffer ).flip();
+								m_readWriteBuffer.flip();
 								int bytesWritten = 0;
 								while ( m_readWriteBuffer.hasRemaining() ) {
 									bytesWritten += companionChannel.write( m_readWriteBuffer );
