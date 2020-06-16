@@ -42,6 +42,8 @@ public class ProxyingTcpServer extends Thread {
 	private InetSocketAddress m_inboundSocketAddress = null;
 	private InetSocketAddress m_outboundSocketAddress = null;
 	private Map<SocketChannel, SocketChannel> m_indexedSocketChannelPairs = new HashMap<SocketChannel, SocketChannel>();
+
+	// preallocate a readwrite buffer for performance
 	private ByteBuffer m_readWriteBuffer = ByteBuffer.allocate( 0xFFFF );
 
 	/**
@@ -167,7 +169,7 @@ public class ProxyingTcpServer extends Thread {
 
 							// read from the readable, and write to its companion
 							if ( companionChannel != null && companionChannel.isConnected() ) {
-								m_readWriteBuffer.clear();
+								( (Buffer) m_readWriteBuffer ).clear();
 
 								int bytesRead = readableChannel.read( m_readWriteBuffer );
 								if ( bytesRead == -1 ) {
