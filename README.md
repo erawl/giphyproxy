@@ -50,7 +50,7 @@ When calling giphyproxy using HTTPS, it is important to note that the SSL certif
 To build giphyproxy, you must have Java 1.8 or newer, and [Maven](https://maven.apache.org/) installed on your build machine.
 
 ## Compiling and unit tests
-giphyproxy is compiled and tested using Java and Maven.
+giphyproxy is compiled and tested using Java and Maven. Ensure you have the Java JDK installed, not the Java JRE.
 ```
 mvn package
 ```
@@ -68,6 +68,9 @@ java -cp target/giphyproxy-1.0-SNAPSHOT.jar me.errolalpay.giphyproxy.App
 
 ## Manual Testing
 * Click [here](https://api.giphy.com/v1/gifs/search?q=im+excited&api_key=3eFQvabDx69SMoOemSPiYfh9FY0nzO9x&offset=0&limit=25) to call the GIPHY API from your browser to get a baseline of what to expect from GIPHY.
+
+![GIPHY in the browser](https://github.com/erawl/giphyproxy/blob/master/images/browser-screenshot.png?raw=true)
+
 * Run giphyproxy
 ```
 java -cp target/giphyproxy-1.0-SNAPSHOT.jar me.errolalpay.giphyproxy.App
@@ -80,4 +83,7 @@ java -cp target/giphyproxy-1.0-SNAPSHOT.jar me.errolalpay.giphyproxy.App
         * Ensure it is a GET request
     * Press Enter
 * The result from Postman should be identical to calling GIPHY directly from your browser.
+
+![GIPHY in postman](https://github.com/erawl/giphyproxy/blob/master/images/postman-screenshot.png?raw=true)
+
 * Note: The caller is responsible for getting an API key from GIPHY (we are using _3eFQvabDx69SMoOemSPiYfh9FY0nzO9x_ in this documentation, which may still work for you). See _Assumptions, caveats, simplifications and TODOs_.
