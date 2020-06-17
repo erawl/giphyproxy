@@ -79,5 +79,5 @@ java -cp target/giphyproxy-1.0-SNAPSHOT.jar me.errolalpay.giphyproxy.App
         * Paste this url into the location: https://localhost:8443/v1/gifs/search?q=im+excited&api_key=3eFQvabDx69SMoOemSPiYfh9FY0nzO9x&offset=0&limit=25
         * Ensure it is a GET request
     * Press Enter
-* The result from Postmap should be identical to calling GIPHY directly from your browser.
+* The result from Postman should be identical to calling GIPHY directly from your browser.
 * Note: The caller is responsible for getting an API key from GIPHY (we are using _3eFQvabDx69SMoOemSPiYfh9FY0nzO9x_ in this documentation, which may still work for you). See _Assumptions, caveats, simplifications and TODOs_.
