@@ -77,6 +77,11 @@ public abstract class PeerToPeerServer extends Thread {
 			m_serverSocketChannel.configureBlocking( false );
 			m_serverSocketChannel.register( m_selector, SelectionKey.OP_ACCEPT );
 
+			// notify all objects that are waiting for this thread.
+			synchronized ( this ) {
+				notifyAll();
+			}
+
 			while ( isInterrupted() == false ) {
 
 				// wait here (forever) for new keys that are ready
@@ -206,6 +211,8 @@ public abstract class PeerToPeerServer extends Thread {
 		} catch ( Exception ex ) {
 
 			// we can only throw runtime exceptions from the Thread.run method
+			System.err.println( ex.getMessage() );
+
 			throw new RuntimeException( ex );
 
 		} finally {
@@ -237,6 +244,12 @@ public abstract class PeerToPeerServer extends Thread {
 			}
 		}
 
+	}
+	/**
+	 * Stops the server
+	 */
+	public void shutdown() {
+		interrupt();
 	}
 	protected void closeSocketChannel( SocketChannel channel ) {
 
