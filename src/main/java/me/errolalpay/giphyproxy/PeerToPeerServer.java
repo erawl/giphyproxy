@@ -15,30 +15,21 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Proxies inbound TCP requests to an another TCP service.
+ * Joins two TCP connections in a peer-to-peer conversation.
  * 
- * Principal of operation: This proxy server listens for inbound connections like typical TCP servers do. Once an
- * inbound connection is accepted, the proxy then opens an outbound connection (called a "companion") to the outbound
- * service. The 2 connections are then indexed together, forwards and backwards, in a HashMap such that the companion
- * connection can be found with predictable performance. Whenever data is read from one connection, the companion
- * connection is retrieved, and that same data is then written to the companion. This "read from connection, write to
- * companion" works in both directions, regardless of which connection (inbound or outbound) sent the data. This
- * read-write, back-and-forth TCP conversation continues until either connection closes itself. At that time, the proxy
- * server assumes the conversation is over, and destroys both connections as well as their membership in the index.
+ * Principal of operation: This abstract server class listens for inbound TCP connections like typical TCP servers do.
+ * Once an inbound connection is accepted, the service then looks for a peer to connect it with. Peers are located by
+ * subclasses, and not by this server class directly. The two peers are then indexed together, forwards and backwards,
+ * in a HashMap such that each peer can be found, given the other, with predictable performance. Whenever data is read
+ * from one connection, its peer connection is located, and that same data is then written to the peer. This "read from
+ * connection, write to peer" works in both directions, regardless of which connection in the 2-peer arrangement sent
+ * the data. The TCP conversation continues until either peer closes itself. At that time, the server assumes the
+ * conversation is over, and destroys both peers as well as their membership in the index.
  * 
- * The "read from connection, write to companion" concept simplifies the code somewhat, since after both connections are
- * established, the proxy server doesnt keep track of which was the inbound and which was the outbound. Both connections
- * are treated equally, in that the server reads from one, writes to the other. And if either connection closes itself,
- * the proxy server tears down both.
- * 
- * This proxy has an emphasis on privacy, therefore it doesnt log ip addresses, number of bytes written, date/time, etc.
- * It limits logging to only that which helps us see the service is running properly.
- * 
- * The content of the TCP byte streams are not consumed in any way, therefore is it the client connections'
- * responsibility to know the service they are consuming, and to handle all params, auth, SSL, keep-alives etc.
+ * This server class has an emphasis on privacy, therefore it doesn't log ip addresses, number of bytes written,
+ * date/time, etc. It limits logging to only that which helps us see the server is running properly.
  * 
  * @author Errol Alpay
- *
  */
 public abstract class PeerToPeerServer extends Thread {
 
