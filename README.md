@@ -54,7 +54,7 @@ giphyproxy is compiled and tested using Java and Maven.
 ```
 mvn package
 ```
-Building giphyproxy automatically executes all units tests, and currently there are 2:
+Building giphyproxy automatically executes all [units tests](https://github.com/erawl/giphyproxy/blob/master/src/test/java/me/errolalpay/giphyproxy/PeerToPeerServerTest.java), and currently there are 2:
 * A test to ensure proper startup and shutdown of the server
 * A test to ensure that the HTTP response code received from some remote HTTP server is the same between 2 scenarios:
     * Calling that server directly
