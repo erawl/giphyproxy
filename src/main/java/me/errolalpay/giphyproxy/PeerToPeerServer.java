@@ -48,39 +48,34 @@ public abstract class PeerToPeerServer extends Thread {
 	private Map<SocketChannel, SocketChannel> m_indexedPeers = new HashMap<SocketChannel, SocketChannel>();
 
 	// preallocate a readwrite buffer for performance
-	private ByteBuffer m_readWriteBuffer = ByteBuffer.allocate( 0xFFFF );
+	private ByteBuffer m_sharedReadWriteBuffer = ByteBuffer.allocate( 0xFFFF );
 
 	/**
 	 * 
-	 * @param inboundPortNumber
+	 * @param portNumber
 	 *            The local port to listen on
-	 * @param outboundServerName
-	 *            The outbound service to proxy to
-	 * @param outboundPortNumber
-	 *            The outbound service port
+	 * 
 	 * @throws IOException
 	 */
-	public PeerToPeerServer( int inboundPortNumber ) throws IOException {
-
-		// set the thread name so we can positively identify and track it at run time using a profiler or debugger
-		// do not use hard-coded strings for class names since they are not automatically refactorable
-		super( PeerToPeerServer.class.getSimpleName() );
+	protected PeerToPeerServer( int portNumber ) throws IOException {
+		super();
 
 		// create the inet address to bind to once the thread is running
-		m_inboundSocketAddress = new InetSocketAddress( "localhost", inboundPortNumber );
-
-		// TODO: caching the IP address of the outbound service assumes its IP address will not change. add a separate
-		// thread to periodically refresh this address.
+		m_inboundSocketAddress = new InetSocketAddress( "localhost", portNumber );
 
 		// set as a non-daemon so that the application cannot terminate until this thread is properly stopped
 		setDaemon( false );
+
+		// set the thread name so we can positively identify and track it at run time using a profiler or debugger.
+		// do not use hard-coded strings for class names since they are not automatically refactorable
+		setName( getClass().getSimpleName() );
 
 	}
 	public void run() {
 
 		try {
 
-			System.err.println( "Starting " + PeerToPeerServer.class.getSimpleName() );
+			System.err.println( "Starting " + getClass().getSimpleName() );
 
 			// create a selector for managing all connections
 			m_selector = Selector.open();
@@ -114,8 +109,7 @@ public abstract class PeerToPeerServer extends Thread {
 						if ( readyKey.isAcceptable() ) {
 							// an inbound connection is ready to accept
 
-							ServerSocketChannel channel = ( (ServerSocketChannel) readyKey.channel() );
-							if ( channel != m_serverSocketChannel ) {
+							if ( ( (ServerSocketChannel) readyKey.channel() ) != m_serverSocketChannel ) {
 								// the channel that is ready to accept from is not the same as our server socket
 								// channel. this should never happen, and perhaps there are some shenanigans going
 								// on? bail out.
@@ -123,18 +117,18 @@ public abstract class PeerToPeerServer extends Thread {
 							}
 
 							// accept the inbound connection
-							SocketChannel inboundChannel = null;
+							SocketChannel acceptedChannel = null;
 							SocketChannel peerChannel = null;
 							try {
 								System.err.println( "Accepting inbound connection" );
 
-								inboundChannel = channel.accept();
-								inboundChannel.configureBlocking( false );
-								inboundChannel.register( m_selector, SelectionKey.OP_READ );
-								theSocketChannelForThisKey = inboundChannel;
+								acceptedChannel = m_serverSocketChannel.accept();
+								acceptedChannel.configureBlocking( false );
+								acceptedChannel.register( m_selector, SelectionKey.OP_READ );
+								theSocketChannelForThisKey = acceptedChannel;
 
 								// locate the peer for this channel
-								peerChannel = locatePeer( inboundChannel );
+								peerChannel = locatePeer( acceptedChannel );
 								if ( peerChannel == null || peerChannel.isConnected() == false ) {
 									throw new EOFException( "Peering failure" );
 								}
@@ -148,10 +142,10 @@ public abstract class PeerToPeerServer extends Thread {
 								throw new EOFException( "Inbound/peer connection failure" );
 							}
 
-							if ( inboundChannel != null && peerChannel != null ) {
+							if ( acceptedChannel != null && peerChannel != null ) {
 								// index the peer socket channels as pairs so they can be found quickly
-								m_indexedPeers.put( inboundChannel, peerChannel );
-								m_indexedPeers.put( peerChannel, inboundChannel );
+								m_indexedPeers.put( acceptedChannel, peerChannel );
+								m_indexedPeers.put( peerChannel, acceptedChannel );
 							}
 
 						} else if ( readyKey.isReadable() ) {
@@ -160,38 +154,38 @@ public abstract class PeerToPeerServer extends Thread {
 							// get the readable channel, and find its peer
 							SocketChannel readableChannel = (SocketChannel) readyKey.channel();
 							if ( readableChannel == null || readableChannel.isConnected() == false ) {
-								continue;
+								throw new EOFException( "Readable/peer processing failure" );
 							}
 							theSocketChannelForThisKey = readableChannel;
 
 							SocketChannel peerChannel = m_indexedPeers.get( readableChannel );
-
-							// read from the readable, and write to its peer
-							if ( peerChannel != null && peerChannel.isConnected() ) {
-								( (Buffer) m_readWriteBuffer ).clear();
-
-								int bytesRead = readableChannel.read( m_readWriteBuffer );
-								if ( bytesRead == -1 ) {
-									// EOF. cleanup.
-									throw new EOFException( "Closed connection" );
-								}
-
-								( (Buffer) m_readWriteBuffer ).flip();
-								int bytesWritten = 0;
-								while ( m_readWriteBuffer.hasRemaining() ) {
-									bytesWritten += peerChannel.write( m_readWriteBuffer );
-								}
-
-								if ( bytesWritten == bytesRead ) {
-									System.err.println( "Read some bytes, and wrote them properly" );
-								} else {
-									// we couldnt write the same number of bytes to the peer. somethings wrong.
-									// cleanup.
-									System.err.println( "Read some bytes, but couldn't write them" );
-									throw new EOFException( "Read/write byte mismatch" );
-								}
+							if ( peerChannel == null || peerChannel.isConnected() == false ) {
+								throw new EOFException( "Readable/peer processing failure" );
 							}
 
+							// read from the readable, and write to its peer
+							( (Buffer) m_sharedReadWriteBuffer ).clear();
+
+							int bytesRead = readableChannel.read( m_sharedReadWriteBuffer );
+							if ( bytesRead == -1 ) {
+								// EOF. cleanup.
+								throw new EOFException( "Closed connection" );
+							}
+
+							( (Buffer) m_sharedReadWriteBuffer ).flip();
+							int bytesWritten = 0;
+							while ( m_sharedReadWriteBuffer.hasRemaining() ) {
+								bytesWritten += peerChannel.write( m_sharedReadWriteBuffer );
+							}
+
+							if ( bytesWritten == bytesRead ) {
+								System.err.println( "Read some bytes, and wrote them properly" );
+							} else {
+								// we couldnt write the same number of bytes to the peer. somethings wrong.
+								// cleanup.
+								System.err.println( "Read some bytes, but couldn't write them" );
+								throw new EOFException( "Read/write byte mismatch" );
+							}
 						}
 
 					} catch ( CancelledKeyException ex ) {
@@ -201,7 +195,7 @@ public abstract class PeerToPeerServer extends Thread {
 
 						System.err.println( "Closing peers" );
 
-						// close the inbound and related outbound connections
+						// close the peers
 						if ( theSocketChannelForThisKey != null ) {
 
 							closeSocketChannel( theSocketChannelForThisKey );

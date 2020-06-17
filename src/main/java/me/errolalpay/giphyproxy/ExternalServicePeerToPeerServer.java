@@ -14,6 +14,9 @@ public class ExternalServicePeerToPeerServer extends PeerToPeerServer {
 		// create the inet address for outbound connections. doing this once to improve performance by eliminating the
 		// DNS lookup at runtime.
 		m_outboundSocketAddress = new InetSocketAddress( outboundServerName, outboundPortNumber );
+
+		// TODO: caching the IP address of the outbound service assumes its IP address will not change. add a separate
+		// thread to periodically refresh this address.
 	}
 	@Override
 	protected SocketChannel locatePeer( SocketChannel channel ) throws IOException {
