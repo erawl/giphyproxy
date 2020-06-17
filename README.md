@@ -67,8 +67,17 @@ java -cp target/giphyproxy-1.0-SNAPSHOT.jar me.errolalpay.giphyproxy.App
 ```
 
 ## Manual Testing
-Click [here](https://api.giphy.com/v1/gifs/search?q=im+excited&api_key=3eFQvabDx69SMoOemSPiYfh9FY0nzO9x&offset=0&limit=25) to call the GIPHY API from your browser.
-
-Click [here](https://localhost:8443/v1/gifs/search?q=im+excited&api_key=3eFQvabDx69SMoOemSPiYfh9FY0nzO9x&offset=0&limit=25) to make the same call to giphyproxy, and the results should be the same (assumes giphyproxy is running on localhost:8443).
-
-Note: The caller is responsible for getting an API key from GIPHY (we are using _3eFQvabDx69SMoOemSPiYfh9FY0nzO9x_ in this documentation, which may still work for you). See _Assumptions, caveats, simplifications and TODOs_.
+* Click [here](https://api.giphy.com/v1/gifs/search?q=im+excited&api_key=3eFQvabDx69SMoOemSPiYfh9FY0nzO9x&offset=0&limit=25) to call the GIPHY API from your browser to get a baseline of what to expect from GIPHY.
+* Run giphyproxy
+```
+java -cp target/giphyproxy-1.0-SNAPSHOT.jar me.errolalpay.giphyproxy.App
+```
+* Setup Postman:
+    * From settings, disable SSL Certificate Verification
+    * Create a new tab
+        * In the Headers subtab, add a header: Host -> api.giphy.com
+        * Paste this url into the location: https://localhost:8443/v1/gifs/search?q=im+excited&api_key=3eFQvabDx69SMoOemSPiYfh9FY0nzO9x&offset=0&limit=25
+        * Ensure it is a GET request
+    * Press Enter
+* The result from Postmap should be identical to calling GIPHY directly from your browser.
+* Note: The caller is responsible for getting an API key from GIPHY (we are using _3eFQvabDx69SMoOemSPiYfh9FY0nzO9x_ in this documentation, which may still work for you). See _Assumptions, caveats, simplifications and TODOs_.
