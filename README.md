@@ -30,7 +30,7 @@ The content of the TCP byte streams are not consumed in any way, therefore is it
 
 ## Assumptions, caveats, simplifications and TODOs
 ### Single Threaded
-giphyproxy is simplistic in that it runs a single java thread. It listens for new TCP connections, as well as makes outbound connections to GIPHY from that same thread. A more productionized version of giphyproxy might have one thread to listen for new connections, and one thread per processor core to handle socket I/O, and a mechanism to pass socket channels between them. This would maximize speed and CPU efficiency without excessive context switching between threads.
+giphyproxy is simplistic in that it runs a single java thread (eliminating the need for hard-to-debug thread synchronization). It listens for new TCP connections, as well as makes outbound connections to GIPHY from that same thread. A more productionized version of giphyproxy might have one thread to listen for new connections, and one thread per processor core to handle socket I/O, and a thread-safe mechanism to pass socket channels between them. This would maximize speed and CPU efficiency without excessive context switching between threads.
 
 ### Logging
 Logging is another area where more effort is needed, but has to be built carefully. Logging helps understand the runtime state of the application, but it cannot reveal details of connections like ips, bytes read or written, dates, etc.
