@@ -11,9 +11,12 @@ public class App {
 		PeerToPeerServer peerToPeerServer = new ExternalServicePeerToPeerServer( 8443, "api.giphy.com", 443 );
 
 		// start the server
-		peerToPeerServer.start();
+		synchronized ( peerToPeerServer ) {
+			peerToPeerServer.start();
+			peerToPeerServer.wait();
+		}
 
-		// wait for the server to exit
+		// wait (forever) for the server to exit
 		synchronized ( peerToPeerServer ) {
 			peerToPeerServer.wait();
 		}
