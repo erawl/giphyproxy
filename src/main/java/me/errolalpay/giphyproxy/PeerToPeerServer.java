@@ -3,8 +3,8 @@ package me.errolalpay.giphyproxy;
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.Buffer;
+import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -40,13 +40,12 @@ import java.util.Set;
  * @author Errol Alpay
  *
  */
-public class PeerToPeerServer extends Thread {
+public abstract class PeerToPeerServer extends Thread {
 
 	private Selector m_selector = null;
 	private ServerSocketChannel m_serverSocketChannel = null;
 	private InetSocketAddress m_inboundSocketAddress = null;
-	private InetSocketAddress m_outboundSocketAddress = null;
-	private Map<SocketChannel, SocketChannel> m_indexedSocketChannelPairs = new HashMap<SocketChannel, SocketChannel>();
+	private Map<SocketChannel, SocketChannel> m_indexedPeers = new HashMap<SocketChannel, SocketChannel>();
 
 	// preallocate a readwrite buffer for performance
 	private ByteBuffer m_readWriteBuffer = ByteBuffer.allocate( 0xFFFF );
@@ -61,7 +60,7 @@ public class PeerToPeerServer extends Thread {
 	 *            The outbound service port
 	 * @throws IOException
 	 */
-	public PeerToPeerServer( int inboundPortNumber, String outboundServerName, int outboundPortNumber ) throws IOException {
+	public PeerToPeerServer( int inboundPortNumber ) throws IOException {
 
 		// set the thread name so we can positively identify and track it at run time using a profiler or debugger
 		// do not use hard-coded strings for class names since they are not automatically refactorable
@@ -69,10 +68,6 @@ public class PeerToPeerServer extends Thread {
 
 		// create the inet address to bind to once the thread is running
 		m_inboundSocketAddress = new InetSocketAddress( "localhost", inboundPortNumber );
-
-		// create the inet address for outbound connections. doing this once to improve performance by eliminating the
-		// DNS lookup at runtime.
-		m_outboundSocketAddress = new InetSocketAddress( outboundServerName, outboundPortNumber );
 
 		// TODO: caching the IP address of the outbound service assumes its IP address will not change. add a separate
 		// thread to periodically refresh this address.
@@ -127,9 +122,9 @@ public class PeerToPeerServer extends Thread {
 								throw new IOException( "Server socket channel corrupt" );
 							}
 
-							// accept the inbound connection, and connect to the outbound service
+							// accept the inbound connection
 							SocketChannel inboundChannel = null;
-							SocketChannel outboundChannel = null;
+							SocketChannel peerChannel = null;
 							try {
 								System.err.println( "Accepting inbound connection" );
 
@@ -138,42 +133,41 @@ public class PeerToPeerServer extends Thread {
 								inboundChannel.register( m_selector, SelectionKey.OP_READ );
 								theSocketChannelForThisKey = inboundChannel;
 
-								// connect to the outbound service
-								System.err.println( "Connecting to outbound service" );
-								outboundChannel = SocketChannel.open();
-								outboundChannel.connect( m_outboundSocketAddress );
-								while ( outboundChannel.finishConnect() == false ) {
+								// locate the peer for this channel
+								peerChannel = locatePeer( inboundChannel );
+								if ( peerChannel == null || peerChannel.isConnected() == false ) {
+									throw new EOFException( "Peering failure" );
 								}
 
-								outboundChannel.configureBlocking( false );
-								outboundChannel.register( m_selector, SelectionKey.OP_READ );
+								peerChannel.configureBlocking( false );
+								peerChannel.register( m_selector, SelectionKey.OP_READ );
 
 							} catch ( IOException ex ) {
-								// something broke while accepting the inbound and/or connecting to the outbound.
+								// something broke while accepting the inbound and/or finding the peer
 								// let it go and cleanup.
-								throw new EOFException( "Inbound/outbound connection failure" );
+								throw new EOFException( "Inbound/peer connection failure" );
 							}
 
-							if ( inboundChannel != null && outboundChannel != null ) {
-								// index the inbound/outbound socket channels as pairs so they can be found quickly
-								m_indexedSocketChannelPairs.put( inboundChannel, outboundChannel );
-								m_indexedSocketChannelPairs.put( outboundChannel, inboundChannel );
+							if ( inboundChannel != null && peerChannel != null ) {
+								// index the peer socket channels as pairs so they can be found quickly
+								m_indexedPeers.put( inboundChannel, peerChannel );
+								m_indexedPeers.put( peerChannel, inboundChannel );
 							}
 
 						} else if ( readyKey.isReadable() ) {
-							// a connection (inbound or outbound) is ready to read from
+							// a connection is ready to read from
 
-							// get the readable channel, and find its counterpart
+							// get the readable channel, and find its peer
 							SocketChannel readableChannel = (SocketChannel) readyKey.channel();
 							if ( readableChannel == null || readableChannel.isConnected() == false ) {
 								continue;
 							}
 							theSocketChannelForThisKey = readableChannel;
 
-							SocketChannel companionChannel = m_indexedSocketChannelPairs.get( readableChannel );
+							SocketChannel peerChannel = m_indexedPeers.get( readableChannel );
 
-							// read from the readable, and write to its companion
-							if ( companionChannel != null && companionChannel.isConnected() ) {
+							// read from the readable, and write to its peer
+							if ( peerChannel != null && peerChannel.isConnected() ) {
 								( (Buffer) m_readWriteBuffer ).clear();
 
 								int bytesRead = readableChannel.read( m_readWriteBuffer );
@@ -185,13 +179,13 @@ public class PeerToPeerServer extends Thread {
 								( (Buffer) m_readWriteBuffer ).flip();
 								int bytesWritten = 0;
 								while ( m_readWriteBuffer.hasRemaining() ) {
-									bytesWritten += companionChannel.write( m_readWriteBuffer );
+									bytesWritten += peerChannel.write( m_readWriteBuffer );
 								}
 
 								if ( bytesWritten == bytesRead ) {
 									System.err.println( "Read some bytes, and wrote them properly" );
 								} else {
-									// we couldnt write the same number of bytes to the companion. somethings wrong.
+									// we couldnt write the same number of bytes to the peer. somethings wrong.
 									// cleanup.
 									System.err.println( "Read some bytes, but couldn't write them" );
 									throw new EOFException( "Read/write byte mismatch" );
@@ -205,17 +199,17 @@ public class PeerToPeerServer extends Thread {
 						System.err.println( "Invalid key" );
 					} catch ( EOFException ex ) {
 
-						System.err.println( "Closing connection pair" );
+						System.err.println( "Closing peers" );
 
 						// close the inbound and related outbound connections
 						if ( theSocketChannelForThisKey != null ) {
 
 							closeSocketChannel( theSocketChannelForThisKey );
-							SocketChannel companionSocketChannel = m_indexedSocketChannelPairs.remove( theSocketChannelForThisKey );
+							SocketChannel peerSocketChannel = m_indexedPeers.remove( theSocketChannelForThisKey );
 
-							if ( companionSocketChannel != null ) {
-								closeSocketChannel( companionSocketChannel );
-								m_indexedSocketChannelPairs.remove( companionSocketChannel );
+							if ( peerSocketChannel != null ) {
+								closeSocketChannel( peerSocketChannel );
+								m_indexedPeers.remove( peerSocketChannel );
 							}
 						}
 					}
@@ -233,14 +227,14 @@ public class PeerToPeerServer extends Thread {
 
 			// this thread is exiting.
 
-			System.err.println( "Exiting " + PeerToPeerServer.class.getSimpleName() );
+			System.err.println( "Exiting " + getClass().getSimpleName() );
 
 			// cleanup resources, and swallow exceptions here because this thread is exiting
-			for ( SocketChannel channel : m_indexedSocketChannelPairs.keySet() ) {
+			for ( SocketChannel channel : m_indexedPeers.keySet() ) {
 				closeSocketChannel( channel );
-				closeSocketChannel( m_indexedSocketChannelPairs.get( channel ) );
+				closeSocketChannel( m_indexedPeers.get( channel ) );
 			}
-			m_indexedSocketChannelPairs.clear();
+			m_indexedPeers.clear();
 
 			try {
 				m_selector.close();
@@ -259,7 +253,7 @@ public class PeerToPeerServer extends Thread {
 		}
 
 	}
-	private void closeSocketChannel( SocketChannel channel ) {
+	protected void closeSocketChannel( SocketChannel channel ) {
 
 		try {
 			channel.close();
@@ -271,5 +265,15 @@ public class PeerToPeerServer extends Thread {
 			// swallow any exceptions since we are discarding the channel
 		}
 	}
+
+	/**
+	 * Locates the peer for the given server socket channel
+	 * 
+	 * @param channel
+	 *            The channel to find a peer for
+	 * @return
+	 * @throws IOException
+	 */
+	protected abstract SocketChannel locatePeer( SocketChannel channel ) throws IOException;
 
 }
