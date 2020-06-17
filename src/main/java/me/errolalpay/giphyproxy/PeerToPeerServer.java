@@ -40,7 +40,7 @@ import java.util.Set;
  * @author Errol Alpay
  *
  */
-public class ProxyingTcpServer extends Thread {
+public class PeerToPeerServer extends Thread {
 
 	private Selector m_selector = null;
 	private ServerSocketChannel m_serverSocketChannel = null;
@@ -61,11 +61,11 @@ public class ProxyingTcpServer extends Thread {
 	 *            The outbound service port
 	 * @throws IOException
 	 */
-	public ProxyingTcpServer( int inboundPortNumber, String outboundServerName, int outboundPortNumber ) throws IOException {
+	public PeerToPeerServer( int inboundPortNumber, String outboundServerName, int outboundPortNumber ) throws IOException {
 
 		// set the thread name so we can positively identify and track it at run time using a profiler or debugger
 		// do not use hard-coded strings for class names since they are not automatically refactorable
-		super( ProxyingTcpServer.class.getSimpleName() );
+		super( PeerToPeerServer.class.getSimpleName() );
 
 		// create the inet address to bind to once the thread is running
 		m_inboundSocketAddress = new InetSocketAddress( "localhost", inboundPortNumber );
@@ -85,7 +85,7 @@ public class ProxyingTcpServer extends Thread {
 
 		try {
 
-			System.err.println( "Starting " + ProxyingTcpServer.class.getSimpleName() );
+			System.err.println( "Starting " + PeerToPeerServer.class.getSimpleName() );
 
 			// create a selector for managing all connections
 			m_selector = Selector.open();
@@ -233,7 +233,7 @@ public class ProxyingTcpServer extends Thread {
 
 			// this thread is exiting.
 
-			System.err.println( "Exiting " + ProxyingTcpServer.class.getSimpleName() );
+			System.err.println( "Exiting " + PeerToPeerServer.class.getSimpleName() );
 
 			// cleanup resources, and swallow exceptions here because this thread is exiting
 			for ( SocketChannel channel : m_indexedSocketChannelPairs.keySet() ) {
