@@ -46,6 +46,9 @@ GIPHY requires you to have an API key to call its API. This documentation uses _
 ### SSL Certificate Validation Failure
 When calling giphyproxy using HTTPS, it is important to note that the SSL certificate will fail validation. This is because as the client is negotiating SSL details, that negotiation traffic is sent directly to GIPHY,  and it is GIPHY's SSL certificate that the client receives. However, the _localhost_ hostname in the url when using giphyproxy does not match the _api.giphy.com_ subject name in GIPHY's SSL certificate, hence the failure. To get around this, giphyproxy would have to implement HTTPS and issue its own SSL certificate to the client. Obviously this constitutes a man-in-the-middle and violates the privacy and security requirement for this code.
 
+### More Testing
+giphyproxy requires additional testing and validation, specifically around areas of performance, concurrency and resource cleanup. It also requires additional testing of socket failure modes, like spontaneous socket EOF and other permutations of weird socket behavior.
+
 ## Dependencies
 To build giphyproxy, you must have Java 1.8 or newer, and [Maven](https://maven.apache.org/) installed on your build machine.
 
